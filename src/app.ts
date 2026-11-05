@@ -1,5 +1,5 @@
-import express from "express";
 import type { NextFunction, Request, Response } from "express";
+import express from "express";
 import { bookmarksRouter } from "./routes/bookmarks.js";
 
 export const app = express();
@@ -45,6 +45,15 @@ app.use((_req, res) => {
 // (Note: 413 is "payload too large", a 4xx client error, not a 500. Document it in the README.)
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   // TODO: write the code above. Delete the next two lines when done.
+  const e = err as { status?: number; type?: string };
+    if (e.type === "entity.parse.failed") {
+        res.status(400).json({ error: "body: request body is not valid JSON" });
+        return;
+    }
+    if (e.type === "entity.too.large") {
+        res.status(413).json({ error: "body: request body is too large" });
+        return;
+    }
   console.error(err);
   res.status(500).json({ error: "internal server error" });
 });

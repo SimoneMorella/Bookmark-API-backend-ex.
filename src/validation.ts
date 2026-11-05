@@ -17,7 +17,7 @@ export function validateCreateBookmark(body: unknown): ValidationResult {
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
     return { ok: false, message: "Request body must be a JSON object" };
   }
-    const data = body as Record<string, unknown>;
+  const data = body as Record<string, unknown>;
 
   if (data.url === undefined) {
     return { ok: false, message: "url is required" };
@@ -34,16 +34,16 @@ export function validateCreateBookmark(body: unknown): ValidationResult {
   }
 
   if (url.length > MAX_URL_LENGTH) {
-    return { ok: false, message: `url must be shorter than ${MAX_URL_LENGTH}`}
+    return { ok: false, message: `url must be shorter than ${MAX_URL_LENGTH}` };
   }
 
   try {
     const parsedURL = new URL(url);
-    if (parsedURL.protocol !== 'http:' && parsedURL.protocol !== 'https:') {
-      return { ok: false, message: "url must start with http: or https:"}
+    if (parsedURL.protocol !== "http:" && parsedURL.protocol !== "https:") {
+      return { ok: false, message: "url must start with http: or https:" };
     }
   } catch {
-    return { ok: false, message: "url must be a valid URL"};
+    return { ok: false, message: "url must be a valid URL" };
   }
   // What to write:
   //   if (typeof body !== "object" || body === null || Array.isArray(body)) {
@@ -97,10 +97,13 @@ export function validateCreateBookmark(body: unknown): ValidationResult {
   let title: string | undefined;
   if (data.title !== undefined) {
     if (typeof data.title !== "string") {
-        return { ok: false, message: "title must be a string" };
+      return { ok: false, message: "title must be a string" };
     }
     if (data.title.length > MAX_TITLE_LENGTH) {
-        return { ok: false, message: `title must be at most ${MAX_TITLE_LENGTH} characters` };
+      return {
+        ok: false,
+        message: `title must be at most ${MAX_TITLE_LENGTH} characters`,
+      };
     }
     title = data.title.trim();
   }

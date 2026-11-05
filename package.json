@@ -4,12 +4,16 @@
   "description": "",
   "main": "dist/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest run",
     "dev": "tsx watch --env-file-if-exists=.env src/server.ts",
     "build": "tsc",
     "start": "node --env-file-if-exists=.env dist/server.js",
     "typecheck": "tsc --noEmit",
-    "check": "bash scripts/check.sh"
+    "check": "bash scripts/check.sh",
+    "test:watch": "vitest",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write ."
   },
   "repository": {
     "type": "git",
@@ -26,10 +30,12 @@
     "express": "^5.3.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.6.5",
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.6",
     "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
   },
   "type": "module"
 }

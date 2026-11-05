@@ -60,26 +60,28 @@ export function createBookmark(
   // TODO: write steps 1-5 above, then delete the next line
   const key = makeDedupeKey(userId, input.url);
   const existingId = dedupeIndex.get(key);
-    if (existingId !== undefined) {
-        return { bookmark: bookmarks.get(existingId)!, created: false };
-    }
-    const bookmark: Bookmark = {
-      id: randomUUID(),
-      userId,
-      url: input.url,
-      title: input.title ?? null,
-      createdAt: new Date().toISOString(),
-    };
-    bookmarks.set(bookmark.id, bookmark);
-    dedupeIndex.set(key, bookmark.id);
-    return { bookmark, created: true };
+  if (existingId !== undefined) {
+    return { bookmark: bookmarks.get(existingId)!, created: false };
+  }
+  const bookmark: Bookmark = {
+    id: randomUUID(),
+    userId,
+    url: input.url,
+    title: input.title ?? null,
+    createdAt: new Date().toISOString(),
+  };
+  bookmarks.set(bookmark.id, bookmark);
+  dedupeIndex.set(key, bookmark.id);
+  return { bookmark, created: true };
 }
 
 // [GUIDE] EXERCISE 11 — list only THIS user's bookmarks.
 // Hint: [...bookmarks.values()] turns the Map's values into an array.
 // Then .filter((b) => b.userId === userId)
 export function listBookmarks(userId: string): Bookmark[] {
-  return [...bookmarks.values()].filter(bookmark => bookmark.userId === userId);
+  return [...bookmarks.values()].filter(
+    (bookmark) => bookmark.userId === userId,
+  );
 }
 
 // [GUIDE] EXERCISE 12 — get one bookmark by id, but only if it belongs to this user.

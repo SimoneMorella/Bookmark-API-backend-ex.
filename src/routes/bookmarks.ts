@@ -1,7 +1,12 @@
-import { Router } from "express";
 import type { Request, Response } from "express";
+import { Router } from "express";
+import {
+  createBookmark,
+  deleteBookmark,
+  getBookmark,
+  listBookmarks,
+} from "../store.js";
 import { validateCreateBookmark } from "../validation.js";
-import { createBookmark, deleteBookmark, getBookmark, listBookmarks } from "../store.js";
 
 // [INFO] A Router is a mini-app that groups related endpoints. In app.ts it is mounted at
 // "/bookmarks", so router.post("/") below means "POST /bookmarks".
@@ -17,9 +22,10 @@ export const bookmarksRouter = Router();
 // Express lowercases header names: req.header("x-user-id") returns string | undefined.
 // Return the id if present and non-empty after trim(), otherwise return undefined.
 // The handlers below send a 400 "x-user-id header is required" when this returns undefined.
-function getUserId(req: Request): string | undefined {
+export function getUserId(req: Request): string | undefined {
   // TODO: e.g.  const id = req.header("x-user-id")?.trim();  return id ? id : undefined;
-  return undefined;
+  const id = req.header("x-user-id")?.trim();
+  return id ? id : undefined;
 }
 
 // [INFO] Documented status codes (copy them into your README too):
@@ -40,7 +46,18 @@ function getUserId(req: Request): string | undefined {
 //      Same request twice -> same bookmark (same id) both times, only one row stored.
 bookmarksRouter.post("/", (req: Request, res: Response) => {
   // TODO: steps 1-4. Delete the next line when done.
-  res.status(501).json({ error: "POST /bookmarks not implemented" });
+  const userId = getUserId(req);
+  if (!userId) {
+    res.status(400).json({ error: "x-user-id header is required" });
+    return;
+  }
+  const result = validateCreateBookmark(req.body);
+  if (!result.ok) {
+    res.status(400).json({ error: result.message });
+    return;
+  }
+  const { bookmark, created } = createBookmark(userId, result.value);
+  res.status(created ? 201 : 200).json(bookmark);
 });
 
 // ---------- GET /bookmarks ----------
@@ -49,7 +66,12 @@ bookmarksRouter.post("/", (req: Request, res: Response) => {
 //   2. res.status(200).json(listBookmarks(userId));
 bookmarksRouter.get("/", (req: Request, res: Response) => {
   // TODO
-  res.status(501).json({ error: "GET /bookmarks not implemented" });
+  const userId = getUserId(req);
+  if (!userId) {
+    res.status(400).json({ error: "x-user-id header is required" });
+    return;
+  }
+  res.status(200).json(listBookmarks(userId));
 });
 
 // ---------- GET /bookmarks/:id ----------
@@ -62,7 +84,17 @@ bookmarksRouter.get("/", (req: Request, res: Response) => {
 //   4. res.status(200).json(bookmark);
 bookmarksRouter.get("/:id", (req: Request, res: Response) => {
   // TODO
-  res.status(501).json({ error: "GET /bookmarks/:id not implemented" });
+  const userId = getUserId(req);
+  if (!userId) {
+    res.status(400).json({ error: 'x-user-id header is required'});
+    return;
+  }
+  const bookmark = getBookmark(userId, String(req.params.id));
+  if (!bookmark) {
+    res.status(400).json({error: 'bookmark not found'});
+    return;
+  }
+  res.status(200).json(bookmark);
 });
 
 // ---------- DELETE /bookmarks/:id ----------
@@ -73,5 +105,15 @@ bookmarksRouter.get("/:id", (req: Request, res: Response) => {
 //   4. otherwise res.status(204).end();   // 204 = success with no body
 bookmarksRouter.delete("/:id", (req: Request, res: Response) => {
   // TODO
-  res.status(501).json({ error: "DELETE /bookmarks/:id not implemented" });
+  const userId = getUserId(req);
+  if (!userId) {
+    res.status(400).json({error: 'x-user-id header is required'});
+    return;
+  }
+  const deleted = deleteBookmark(userId, String(req.params.id));
+    if (!deleted) {
+        res.status(404).json({error: 'bookmark not found'});
+        return;
+    }
+  res.status(204).end();
 });
