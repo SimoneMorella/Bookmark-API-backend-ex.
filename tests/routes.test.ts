@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { app } from "../src/app.js";
 import { getUserId } from "../src/routes/bookmarks.js";
 
-// Run one exercise:  npm test -- -t "Exercise 15"
+// Run one test:  npm test -- -t "same POST twice"
 // Run this file:     npm test -- tests/routes.test.ts
 // These tests start the real app on a random free port and send real HTTP requests.
 
@@ -54,7 +54,7 @@ const create = (user: string | null, url: string, title?: string) =>
   call("POST", "/bookmarks", user, JSON.stringify({ url, title }));
 
 describe("routes/bookmarks.ts", () => {
-  it("Exercise 14: getUserId reads and trims the x-user-id header", () => {
+  it("getUserId reads and trims the x-user-id header", () => {
     const fakeReq = (value?: string) =>
       ({ header: () => value }) as unknown as Request;
     expect(getUserId(fakeReq("alice"))).toBe("alice");
@@ -63,14 +63,14 @@ describe("routes/bookmarks.ts", () => {
     expect(getUserId(fakeReq("   "))).toBeUndefined();
   });
 
-  it("Exercise 15: POST /bookmarks returns 201 and the bookmark", async () => {
+  it("POST /bookmarks returns 201 and the bookmark", async () => {
     const res = await create(newUser(), "https://example.com/a", "Hi");
     expect(res.status).toBe(201);
     expect(res.json.url).toBe("https://example.com/a");
     expect(res.json.id).toBeTruthy();
   });
 
-  it("Exercise 15: same POST twice -> 200 and the same bookmark, one row", async () => {
+  it("same POST twice -> 200 and the same bookmark, one row", async () => {
     const user = newUser();
     const first = await create(user, "https://example.com/a");
     const second = await create(user, "https://example.com/a");
@@ -81,7 +81,7 @@ describe("routes/bookmarks.ts", () => {
     expect(list.json).toHaveLength(1);
   });
 
-  it("Exercise 15: bad input -> 400 with an error naming the field", async () => {
+  it("bad input -> 400 with an error naming the field", async () => {
     const user = newUser();
     const cases: [string, string][] = [
       ['{"url":""}', "url"],
@@ -100,13 +100,13 @@ describe("routes/bookmarks.ts", () => {
     }
   });
 
-  it("Exercise 15: missing x-user-id header -> 400", async () => {
+  it("missing x-user-id header -> 400", async () => {
     const res = await create(null, "https://example.com/a");
     expect(res.status).toBe(400);
     expect(String(res.json.error).toLowerCase()).toContain("x-user-id");
   });
 
-  it("Exercise 16: GET /bookmarks lists only the caller's bookmarks", async () => {
+  it("GET /bookmarks lists only the caller's bookmarks", async () => {
     const alice = newUser();
     const bob = newUser();
     await create(alice, "https://example.com/a");
@@ -117,11 +117,11 @@ describe("routes/bookmarks.ts", () => {
     expect(res.json).toHaveLength(2);
   });
 
-  it("Exercise 16: GET /bookmarks without header -> 400", async () => {
+  it("GET /bookmarks without header -> 400", async () => {
     expect((await call("GET", "/bookmarks", null)).status).toBe(400);
   });
 
-  it("Exercise 17: GET /bookmarks/:id returns 200 or 404", async () => {
+  it("GET /bookmarks/:id returns 200 or 404", async () => {
     const user = newUser();
     const created = await create(user, "https://example.com/a");
     const found = await call("GET", `/bookmarks/${created.json.id}`, user);
@@ -137,7 +137,7 @@ describe("routes/bookmarks.ts", () => {
     ).toBe(400);
   });
 
-  it("Exercise 18: DELETE /bookmarks/:id returns 204, then 404", async () => {
+  it("DELETE /bookmarks/:id returns 204, then 404", async () => {
     const user = newUser();
     const created = await create(user, "https://example.com/a");
     const del = await call("DELETE", `/bookmarks/${created.json.id}`, user);
@@ -154,13 +154,49 @@ describe("routes/bookmarks.ts", () => {
 });
 
 describe("app.ts", () => {
-  it("Exercise 19: broken JSON -> 400 (not 500)", async () => {
+  it("GET /users/:userId/bookmarks lists that user's bookmarks (200)", async () => {
+    const user = newUser();
+    await create(user, "https://example.com/a");
+    await create(user, "https://example.com/b");
+    await create(newUser(), "https://example.com/c");
+    const res = await call("GET", `/users/${user}/bookmarks`, user);
+    expect(res.status).toBe(200);
+    expect(res.json).toHaveLength(2);
+  });
+
+  it("a user with no bookmarks gets 200 and an empty list", async () => {
+    const user = newUser();
+    const res = await call("GET", `/users/${user}/bookmarks`, user);
+    expect(res.status).toBe(200);
+    expect(res.json).toEqual([]);
+  });
+
+  it("header missing -> 400, header for another user -> 403", async () => {
+    const alice = newUser();
+    const bob = newUser();
+    expect((await call("GET", `/users/${alice}/bookmarks`, null)).status).toBe(
+      400,
+    );
+    const forbidden = await call("GET", `/users/${alice}/bookmarks`, bob);
+    expect(forbidden.status).toBe(403);
+    expect(forbidden.json.error).toBeTruthy();
+  });
+
+  it("GET / returns a friendly 200 JSON welcome (not the 404)", async () => {
+    const res = await call("GET", "/", null);
+    expect(res.status).toBe(200);
+    expect(res.json).toBeTypeOf("object");
+    expect(res.json.error).toBeUndefined();
+    expect(Object.keys(res.json).length).toBeGreaterThan(0);
+  });
+
+  it("broken JSON -> 400 (not 500)", async () => {
     const res = await call("POST", "/bookmarks", newUser(), '{"url":');
     expect(res.status).toBe(400);
     expect(String(res.json.error).toLowerCase()).toContain("json");
   });
 
-  it("Exercise 19: too-large body -> 413 (not 500)", async () => {
+  it("too-large body -> 413 (not 500)", async () => {
     const res = await call(
       "POST",
       "/bookmarks",
@@ -170,7 +206,7 @@ describe("app.ts", () => {
     expect(res.status).toBe(413);
   });
 
-  it("Exercise 19: null body, array body and no body -> 400 (not 500)", async () => {
+  it("null body, array body and no body -> 400 (not 500)", async () => {
     const user = newUser();
     expect((await call("POST", "/bookmarks", user, "null")).status).toBe(400);
     expect((await call("POST", "/bookmarks", user, "[]")).status).toBe(400);

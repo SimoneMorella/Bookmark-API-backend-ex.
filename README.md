@@ -7,77 +7,106 @@ It must survive bad input: malformed requests get a `400` naming the field, neve
 
 ```bash
 npm install
-npm run dev        # starts on http://localhost:3000 with auto-reload
+npm run dev        # starts with auto-reload on http://localhost:3000 (or the PORT set in .env)
 npm run check      # (second terminal) smoke-tests good and bad requests
+npm test           # automated tests
 npm run typecheck  # checks the TypeScript types
+npm run lint       # lints and checks formatting (npm run lint:fix to fix)
 ```
 
-Callers identify themselves with the header `X-User-Id: <name>` (no real login in this exercise).
+Create a `.env` file with `PORT=7777` to change the port (it defaults to 3000). The examples below use port 7777.
+If your port is different, change it in the commands, and run the smoke test as `BASE=http://localhost:7777 npm run check`.
+
+Callers identify themselves with the header `X-User-Id: <name>` (there is no real login).
 
 ## Endpoints and status codes
 
-<!-- [GUIDE] EXERCISE 20 — Fill this table from the comments in src/routes/bookmarks.ts, and add example
-requests/responses (curl commands). A reviewer reads this first, so make it clear. -->
+| Method | Path                     | Success                                     | Errors                                                     |
+| ------ | ------------------------ | ------------------------------------------- | ---------------------------------------------------------- |
+| GET    | /                        | 200 welcome message                         |                                                            |
+| GET    | /health                  | 200 `{"status":"ok"}`                       |                                                            |
+| POST   | /bookmarks               | 201 created, 200 already existed (a repeat) | 400 invalid body or missing header, 413 body over 10 kb    |
+| GET    | /bookmarks               | 200 list of the caller's bookmarks          | 400 missing header                                         |
+| GET    | /bookmarks/:id           | 200 the bookmark                            | 400 missing header, 404 not found                          |
+| DELETE | /bookmarks/:id           | 204 no body                                 | 400 missing header, 404 not found                          |
+| GET    | /users/:userId/bookmarks | 200 list of that user's bookmarks           | 400 missing header, 403 header user differs from `:userId` |
 
-| Method | Path           | Success | Errors |
-| ------ | -------------- |---------|--------|
-| POST   | /bookmarks     | 201-200 | 400    |
-| GET    | /bookmarks     | 200     | 400    |
-| GET    | /bookmarks/:id | 200     | 400    |
-| DELETE | /bookmarks/:id | 204     | 400    |
+Any unknown path returns `404 {"error":"route not found"}`. Errors always look like `{ "error": "<message>" }`.
+Unexpected server errors return `500 {"error":"internal server error"}`; no input a caller can send should reach it.
+A bookmark is owned by the user in `X-User-Id`, so someone else's bookmark looks like `404`.
 
-# Examples of curl requests
+## Examples
 
 ```bash
-# Create a bookmark
-curl -X POST http://localhost:3000/bookmarks \
+# Create a bookmark -> 201, returns the saved bookmark (with its generated id)
+curl -i -X POST http://localhost:7777/bookmarks \
   -H "Content-Type: application/json" \
   -H "X-User-Id: alice" \
   -d '{"url": "https://example.com", "title": "Example"}'
-  
-# Get all bookmarks for a user
-curl -X GET http://localhost:3000/bookmarks \
-  -H "X-User-Id: alice"
-  
-# Get a specific bookmark by ID
-curl -X GET http://localhost:3000/bookmarks/1 \
-    -H "X-User-Id: alice"
-    
-# Delete a bookmark by ID
-curl -X DELETE http://localhost:3000/bookmarks/1 \
-    -H "X-User-Id: alice"
+
+# Send the same request again -> 200, same bookmark and same id, still one row
+
+# List alice's bookmarks -> 200
+curl -i http://localhost:7777/bookmarks -H "X-User-Id: alice"
+
+# Same list through the user route (header must match the user in the URL) -> 200
+curl -i http://localhost:7777/users/alice/bookmarks -H "X-User-Id: alice"
+
+# Another user's list -> 403
+curl -i http://localhost:7777/users/bob/bookmarks -H "X-User-Id: alice"
+
+# Get one bookmark (use the id returned when creating) -> 200, or 404
+curl -i http://localhost:7777/bookmarks/<id> -H "X-User-Id: alice"
+
+# Delete it -> 204
+curl -i -X DELETE http://localhost:7777/bookmarks/<id> -H "X-User-Id: alice"
+
+# Bad input -> 400 {"error":"url must be a string"}
+curl -i -X POST http://localhost:7777/bookmarks \
+  -H "Content-Type: application/json" -H "X-User-Id: alice" -d '{"url": 123}'
 ```
 
 ## Validation rules
 
-<!-- [GUIDE] EXERCISE 21 — List what you reject and the message each gives (empty url, number, missing,
-too long, not a URL, bad title, broken JSON, ...). Say that errors look like { "error": "url must be a string" }. -->
+Every rejection is a `400` with a message that names the field:
 
-Validation rules for bookmarks:
-- Requests must be valid JSON. If not, the server responds with a 400 status code and an error message indicating that the request body is not valid JSON.
-- The request body must contain a 'url' field that is a string and a valid URL. It also must not exceed 2048 characters. If the 'url' field is missing, not a string, or exceeds the length limit, the server responds with a 400 status code and an appropriate error message.
-- The request body may contain an optional 'title' field that is a string and must not exceed 256 characters. If the 'title' field is present but not a string or exceeds the length limit, the server responds with a 400 status code and an appropriate error message.
-- The 'X-User-Id' header must be present in the request. If it is missing, the server responds with a 400 status code and an error message indicating that the 'x-user-id header is required.
+| Input                              | Response error                         |
+| ---------------------------------- | -------------------------------------- |
+| Missing `X-User-Id` header         | `x-user-id header is required`         |
+| Broken JSON                        | `body: request body is not valid JSON` |
+| Body missing, `null` or an array   | `Request body must be a JSON object`   |
+| `url` missing                      | `url is required`                      |
+| `url` not a string (e.g. a number) | `url must be a string`                 |
+| `url` empty or only spaces         | `url must not be empty`                |
+| `url` longer than 2000 characters  | `url must be shorter than 2000`        |
+| `url` not parseable as a URL       | `url must be a valid URL`              |
+| `url` not `http:` or `https:`      | `url must start with http: or https:`  |
+| `title` present but not a string   | `title must be a string`               |
+| `title` longer than 200 characters | `title must be at most 200 characters` |
+
+`title` is optional. A body larger than 10 kb is rejected with `413` (`body: request body is too large`).
 
 ## How repeats are recognised
 
-<!-- [GUIDE] EXERCISE 22 — The most important part for the reviewer. Explain in your own words:
-1. What identifies a repeat (same user + same normalized URL)?
-2. How do you normalize (lowercase host, remove #fragment, ...)? Why those choices?
-3. What does the API answer on a repeat (200 + the existing bookmark, vs 201 for new)?
-4. Why this way and not another (e.g. an Idempotency-Key header, or comparing the raw string)?
-   Tip: mention the trade-off. Raw-string comparison would store "https://Example.com" and
-   "https://example.com" as two rows even though they're the same page.
-5. Limits: data is in memory, so it's lost on restart. A real database would use a UNIQUE (user_id, url) constraint. -->
+A repeat is the same user saving the same page again, so a bookmark is identified by **user id + normalized URL**
+(see `makeDedupeKey` in `src/store.ts`).
 
-A repeat is identified by the combination of the same user (from the 'X-User-Id' header) and the same normalized URL.
-Normalizing means converting the URL to lowercase, removing fragments (the part after '#'), and ensuring that the URL is in standard format.
-The API responds with a 200 status code and the existing bookmark if a repeat is detected, while it responds with a 201 status code for new bookmarks.
-This approach makes sure to avoid storing duplicate bookmarks for the same user, while still allowing different users to have the same bookmark.
-For example, comparing raw strings would treat "https://Example.com" and "https://example.com" as different bookmarks, which is not desired.
-Also, using Idempotency-Key headers would require additional client-side management and does not address the issue of URL normalization.
+- **Normalizing:** `new URL()` lowercases the host and adds the trailing `/` to bare domains, and the `#fragment`
+  is removed because it doesn't change the page. The path and query string are kept as they are, so `/A` and `/a`
+  or `?a=1` and `?a=2` count as different pages.
+- **Lookup:** a second map (`dedupeIndex`) maps the key to the bookmark id, so a repeat is found instantly.
+- **Answer:** the first request returns `201` with the new bookmark. A repeat returns `200` with the existing
+  bookmark (same id) and no new row is created, so retrying a request is always safe.
+- **Different users:** the user id is part of the key, so two users can save the same URL.
+- **Deleting:** a deleted bookmark is also removed from the index, so the URL can be saved again.
 
-# Limitations
-Because the data is stored in memory, it is lost on server restart. 
-In a real-world application, a database with a UNIQUE constraint on (user_id, url) would be used to enforce uniqueness and persist data across restarts.
+Why this way: comparing raw strings would store `https://Example.com` and `https://example.com` as two rows even
+though they are the same page. An `Idempotency-Key` header would force every caller to send an extra header and
+wouldn't catch the same page sent in a different spelling.
+`createBookmark` is synchronous (no `await`), so two simultaneous identical requests can't both pass the check
+before one has saved.
 
+## Limitations
+
+Data is stored in memory, so it is lost when the server restarts.
+In a real application a database with a `UNIQUE (user_id, url)` constraint would enforce uniqueness and persist the data.

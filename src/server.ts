@@ -1,4 +1,4 @@
-// [INFO] This file is finished. It only starts the server.
+// Starts the server.
 // Splitting app.ts (the app) from server.ts (listening on a port) is a common habit:
 // it keeps the app easy to test later without opening a real port.
 import { app } from "./app.js";
