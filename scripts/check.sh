@@ -33,10 +33,5 @@ req "no user header"      400 -X POST $BASE/bookmarks -H "$J" -d '{"url":"https:
 req "list"                200 $BASE/bookmarks -H "$U"
 req "get unknown id"      404 $BASE/bookmarks/does-not-exist -H "$U"
 req "delete unknown id"   404 -X DELETE $BASE/bookmarks/does-not-exist -H "$U"
-req "user list (own)"     200 $BASE/users/alice/bookmarks -H "$U"
-req "user list (other)"   403 $BASE/users/bob/bookmarks -H "$U"
-req "user list no header" 400 $BASE/users/alice/bookmarks
 echo "Finally, GET /bookmarks must show exactly ONE bookmark for alice:"
 curl -s $BASE/bookmarks -H "$U"; echo
-echo "And GET /users/alice/bookmarks must show the same list:"
-curl -s $BASE/users/alice/bookmarks -H "$U"; echo

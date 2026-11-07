@@ -21,15 +21,14 @@ Callers identify themselves with the header `X-User-Id: <name>` (there is no rea
 
 ## Endpoints and status codes
 
-| Method | Path                     | Success                                     | Errors                                                     |
-| ------ | ------------------------ | ------------------------------------------- | ---------------------------------------------------------- |
-| GET    | /                        | 200 welcome message                         |                                                            |
-| GET    | /health                  | 200 `{"status":"ok"}`                       |                                                            |
-| POST   | /bookmarks               | 201 created, 200 already existed (a repeat) | 400 invalid body or missing header, 413 body over 10 kb    |
-| GET    | /bookmarks               | 200 list of the caller's bookmarks          | 400 missing header                                         |
-| GET    | /bookmarks/:id           | 200 the bookmark                            | 400 missing header, 404 not found                          |
-| DELETE | /bookmarks/:id           | 204 no body                                 | 400 missing header, 404 not found                          |
-| GET    | /users/:userId/bookmarks | 200 list of that user's bookmarks           | 400 missing header, 403 header user differs from `:userId` |
+| Method | Path           | Success                                     | Errors                                                  |
+| ------ | -------------- | ------------------------------------------- | ------------------------------------------------------- |
+| GET    | /              | 200 welcome message                         |                                                         |
+| GET    | /health        | 200 `{"status":"ok"}`                       |                                                         |
+| POST   | /bookmarks     | 201 created, 200 already existed (a repeat) | 400 invalid body or missing header, 413 body over 10 kb |
+| GET    | /bookmarks     | 200 list of the caller's bookmarks          | 400 missing header                                      |
+| GET    | /bookmarks/:id | 200 the bookmark                            | 400 missing header, 404 not found                       |
+| DELETE | /bookmarks/:id | 204 no body                                 | 400 missing header, 404 not found                       |
 
 Any unknown path returns `404 {"error":"route not found"}`. Errors always look like `{ "error": "<message>" }`.
 Unexpected server errors return `500 {"error":"internal server error"}`; no input a caller can send should reach it.
@@ -48,12 +47,6 @@ curl -i -X POST http://localhost:7777/bookmarks \
 
 # List alice's bookmarks -> 200
 curl -i http://localhost:7777/bookmarks -H "X-User-Id: alice"
-
-# Same list through the user route (header must match the user in the URL) -> 200
-curl -i http://localhost:7777/users/alice/bookmarks -H "X-User-Id: alice"
-
-# Another user's list -> 403
-curl -i http://localhost:7777/users/bob/bookmarks -H "X-User-Id: alice"
 
 # Get one bookmark (use the id returned when creating) -> 200, or 404
 curl -i http://localhost:7777/bookmarks/<id> -H "X-User-Id: alice"

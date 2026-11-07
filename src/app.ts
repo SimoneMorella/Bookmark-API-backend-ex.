@@ -1,7 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import express from "express";
 import { bookmarksRouter } from "./routes/bookmarks.js";
-import { usersRouter } from "./routes/users.js";
 
 export const app = express();
 
@@ -26,8 +25,6 @@ app.get("/", (_req, res) => {
 });
 
 app.use("/bookmarks", bookmarksRouter);
-
-app.use("/users", usersRouter);
 
 // [INFO] Runs when no route matched: unknown path -> 404 instead of Express's HTML page.
 app.use((_req, res) => {

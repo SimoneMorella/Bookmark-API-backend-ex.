@@ -154,34 +154,6 @@ describe("routes/bookmarks.ts", () => {
 });
 
 describe("app.ts", () => {
-  it("GET /users/:userId/bookmarks lists that user's bookmarks (200)", async () => {
-    const user = newUser();
-    await create(user, "https://example.com/a");
-    await create(user, "https://example.com/b");
-    await create(newUser(), "https://example.com/c");
-    const res = await call("GET", `/users/${user}/bookmarks`, user);
-    expect(res.status).toBe(200);
-    expect(res.json).toHaveLength(2);
-  });
-
-  it("a user with no bookmarks gets 200 and an empty list", async () => {
-    const user = newUser();
-    const res = await call("GET", `/users/${user}/bookmarks`, user);
-    expect(res.status).toBe(200);
-    expect(res.json).toEqual([]);
-  });
-
-  it("header missing -> 400, header for another user -> 403", async () => {
-    const alice = newUser();
-    const bob = newUser();
-    expect((await call("GET", `/users/${alice}/bookmarks`, null)).status).toBe(
-      400,
-    );
-    const forbidden = await call("GET", `/users/${alice}/bookmarks`, bob);
-    expect(forbidden.status).toBe(403);
-    expect(forbidden.json.error).toBeTruthy();
-  });
-
   it("GET / returns a friendly 200 JSON welcome (not the 404)", async () => {
     const res = await call("GET", "/", null);
     expect(res.status).toBe(200);
