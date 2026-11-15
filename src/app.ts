@@ -19,7 +19,8 @@ app.get("/", (_req, res) => {
   res.status(200).json({
     name: "Bookmark API",
     message:
-      "Welcome! Send requests to /bookmarks (header X-User-Id required).",
+      "Welcome! This is a little Backend Exercise. To see how it works just send requests to /bookmarks (header X-User-Id required).",
+
     health: "/health",
   });
 });
